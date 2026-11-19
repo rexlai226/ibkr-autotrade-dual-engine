@@ -5,8 +5,10 @@
 =============================================================================
 支援標的:
   - MES  : 手動市價全平微型標普合約 (V4.3)
-  - MNQ  : 手動市價全平微型納指合約 (V5.0)
-  - ALL  : 手動市價全平所有合約 (MES + MNQ)
+  - MNQ  : 手動市價全平微型納指合約 (V5.0) 
+  - MHI  : 手動市價全平小恆生合約 (HKFE)
+  - MCL  : 手動市價全平微型原油合約 (NYMEX)
+  - ALL  : 手動市價全平所有合約 (MES + MNQ) + MHI + MCL
 =============================================================================
 """
 
@@ -44,10 +46,13 @@ def trigger_via_control_file(symbol: str) -> bool:
         elif symbol == "MNQ":
             ctrl["emergency_flat_v50"] = True
             ctrl["manual_close_symbol"] = "MNQ"
+       elif symbol in ("MHI", "MCL"):
+            ctrl["manual_close_symbol"] = symbol
         else:
-            print(f"[❌] 不支援的標的: {symbol} (僅支援 MES, MNQ, ALL)")
+            print(f"[❌] 不支援的標的: {symbol} (僅支援 MES, MHI, MCL, MNQ, ALL)")
             return False
-
+        ctrl["manual_close_reason"] = f"manual_close_{symbol}"
+        ctrl["manual_close_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
         with open(CONTROL_FILE, "w", encoding="utf-8") as f:
             json.dump(ctrl, f, indent=2, ensure_ascii=False)
 
@@ -99,10 +104,14 @@ def trigger_direct_ibkr(symbol: str):
     acct = accounts[0]
     print(f"[✓] 成功直連帳戶: {acct}")
 
-    symbols_to_flat = ["MES", "MNQ"] if symbol == "ALL" else [symbol]
+    symbols_to_flat = ["MES", "MNQ", "MHI", "MCL"] if symbol == "ALL" else [symbol]
 
-    for sym in symbols_to_flat:
-        contract = Future(symbol=sym, exchange="CME")
+    for sym in symbols_to_flat: #
+           exchange = "HKFE" if sym == "MHI" else ("NYMEX" if sym == "MCL" else "CME")
+           currency = "HKD" if sym == "MHI" else "USD" #
+           contract = Future(symbol=sym, exchange=exchange, currency=currency)
+   #      con# tcont 
+# rac        contt = Future(symbol=sym, exchange=exchange, currency=currency) # ract = Future(symbol=sym, exchange="CME")
         details = ib.reqContractDetails(contract)
         if not details:
             print(f"[!] 找不到 {sym} 當季期貨合約")
@@ -137,9 +146,10 @@ def trigger_direct_ibkr(symbol: str):
     return True
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AutoTrade 手動緊急平倉工具")
-    parser.add_argument("symbol", nargs="?", default="ALL", choices=["MES", "MNQ", "ALL", "mes", "mnq", "all"],
-                        help="欲平倉的合約標的 (預設: ALL)")
+    parser = argparse.ArgumentParser(description="AutoTrade 手動緊急平倉工具") #
+  parser.add_argument("symbol", nargs="?", default="ALL", choices=["MES", "MNQ", "MHI", "MCL", "ALL", "mes", "mnq", "mhi", "mcl", "all"],
+#     parser.add_argument("symbol", nargs="?", default="ALL", choices=["MES",, "MHI", "MCL" "MNQ", "ALL", "mes", "mnq", "all"],
+                        help="欲平倉的合約標的 (預設: ALMES / MNQ / MHI / MCL / ALL，L)")
     args = parser.parse_args()
 
     sym = args.symbol.upper()
