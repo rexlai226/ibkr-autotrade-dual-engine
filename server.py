@@ -1073,7 +1073,7 @@ class ControlDashboardHandler(SimpleHTTPRequestHandler):
             # 記錄審計日誌
             try:
                 mgr = IncidentManager()
-                strat = "ALL" if symbol == "ALL" else ("V4.3" if symbol == "MES" else "V5.0")
+                strat = "ALL" if symbol == "ALL" else (f"V9.3_{symbol}" if symbol in ("MES", "MNQ", "MHI", "MCL") else symbol)
                 mgr.log_incident(
                     incident_type="MANUAL_OVERRIDE",
                     message=f"[Web手動平倉指令] 用戶觸發手動平倉: {symbol} (原因: {reason})",
